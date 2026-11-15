@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}农技语料双人盲标{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="wrap head-row">
+    <h1><a href="/pending">🌾 农技语料双人盲标</a></h1>
+    <nav>
+      <a href="/pending" class="{{ 'on' if active=='pending' }}">待标</a>
+      <a href="/disagreed" class="{{ 'on' if active=='disagreed' }}">分歧</a>
+      <a href="/usable" class="{{ 'on' if active=='usable' }}">可用</a>
+      <a href="/upload" class="{{ 'on' if active=='upload' }}">上传 CSV</a>
+      <a href="/download">下载训练集</a>
+    </nav>
+    <div class="who">
+      当前标注员：
+      {% for aid, name in annotators.items() %}
+      <a class="pill {{ 'me' if aid==annotator }}" href="/switch?to={{ aid }}&next={{ request.url.path }}">{{ name }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</header>
+<main class="wrap">
+  {% if msg %}<div class="flash {{ kind }}">{{ msg }}</div>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+<footer class="wrap">
+  服务进程：<b>{{ instance }}</b>（两进程共享同一 SQLite 数据库，刷新可能命中另一进程）·
+  领取有效期 {{ ttl }} 秒 · 提交前不展示他人标签
+</footer>
+</body>
+</html>

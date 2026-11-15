@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>上传语料 CSV</h2>
+<div class="card">
+  <p class="hint">
+    CSV 需为 UTF-8 编码，表头 <code>record_no,description</code>（或 <code>记录号,描述</code>）。
+    规则：新记录号 → 新增；同号且描述<b>有改动</b> → 版本 +1，并<b>清除该记录全部旧领取与旧标签</b>，
+    旧页面之后的提交一律拒绝；同号且描述<b>未变</b> → 保留全部标注进度。
+    <a href="/sample.csv">下载示例 CSV</a>
+  </p>
+  <form method="post" action="/upload" enctype="multipart/form-data">
+    <input type="file" name="file" accept=".csv" required>
+    <button class="btn primary" type="submit">上传</button>
+  </form>
+</div>
+{% if error %}
+<div class="flash err">{{ error }}</div>
+{% endif %}
+{% if stats %}
+<div class="flash ok">
+  导入完成：新增 <b>{{ stats.added }}</b> 条，改写 <b>{{ stats.updated }}</b> 条（旧领取与标签已清除），
+  未变保留 <b>{{ stats.kept }}</b> 条。
+</div>
+<p><a class="btn" href="/pending">前往待标列表</a></p>
+{% endif %}
+{% endblock %}

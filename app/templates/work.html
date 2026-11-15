@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>标注记录 {{ claim.record_no }} <span class="ver">v{{ claim.version }}</span></h2>
+<p class="hint">双盲标注：提交前本页面不会显示其他标注员的任何信息。倒计时结束或记录被改写后，本页提交将被拒绝。</p>
+<div class="card">
+  <div class="countdown">
+    剩余时间：<b id="cd">{{ remaining }}</b> 秒
+    <span id="expired" class="tag err" style="display:none">已过期，提交将被拒绝，请返回重新领取</span>
+  </div>
+  <p class="desc-big">{{ record.description }}</p>
+  <form method="post" action="/submit" id="labelform">
+    <input type="hidden" name="token" value="{{ claim.token }}">
+    {% for lb in labels %}
+    <button class="btn big" name="label" value="{{ lb }}" type="submit">{{ lb }}</button>
+    {% endfor %}
+  </form>
+</div>
+<script>
+(function () {
+  var left = {{ remaining }};
+  var cd = document.getElementById('cd');
+  var expired = document.getElementById('expired');
+  var btns = document.querySelectorAll('#labelform button');
+  function tick() {
+    if (left <= 0) {
+      cd.textContent = '0';
+      expired.style.display = 'inline';
+      btns.forEach(function (b) { b.disabled = true; });
+      return;
+    }
+    cd.textContent = left;
+    left -= 1;
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
+{% endblock %}

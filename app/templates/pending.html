@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>待标记录 <span class="cnt">{{ counts.pending }}</span></h2>
+<p class="hint">
+  每条记录需<b>两名不同标注员</b>各标一票（病害 / 虫害 / 无异常）；提交前不会展示他人标签。
+  领取后 <b>{{ ttl }} 秒</b>内有效，过期需重新领取，重新领取后旧页面凭证立即失效。
+</p>
+{% if rows %}
+<table>
+  <tr><th>记录号</th><th>描述</th><th>已收票</th><th>我的状态 / 操作</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td class="no">{{ r.record_no }} <span class="ver">v{{ r.version }}</span></td>
+    <td class="desc">{{ r.description }}</td>
+    <td class="c">{{ r.votes }}/2</td>
+    <td>
+      {% if r.state == 'done_by_me' %}
+        <span class="tag ok">已标注 ✓，等待他人</span>
+      {% elif r.state == 'claimed_by_me' %}
+        <span class="tag warn">已领取，剩 {{ r.remaining }} 秒</span>
+        <a class="btn" href="/work/{{ r.my_token }}">继续标注</a>
+      {% elif r.state == 'busy' %}
+        <span class="tag">他人标注中，稍后再试</span>
+      {% else %}
+        <form method="post" action="/claim" class="inline">
+          <input type="hidden" name="record_no" value="{{ r.record_no }}">
+          <button class="btn primary" type="submit">领取并标注</button>
+        </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">没有待标记录。可到 <a href="/upload">上传 CSV</a> 导入新语料。</p>
+{% endif %}
+{% endblock %}

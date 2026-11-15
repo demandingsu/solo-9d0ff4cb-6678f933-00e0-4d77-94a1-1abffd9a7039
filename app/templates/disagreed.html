@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>分歧记录 <span class="cnt">{{ rows|length }}</span></h2>
+<p class="hint">两名标注员标签不一致的记录，需质检员复核（分歧记录不会进入训练集下载）。</p>
+{% if rows %}
+<table>
+  <tr><th>记录号</th><th>描述</th><th>双方标签</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td class="no">{{ r.record_no }} <span class="ver">v{{ r.version }}</span></td>
+    <td class="desc">{{ r.description }}</td>
+    <td>
+      {% for l in r.labels %}
+      <span class="tag warn">{{ l.name }}：{{ l.label }}</span>
+      {% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">暂无分歧记录。</p>
+{% endif %}
+{% endblock %}

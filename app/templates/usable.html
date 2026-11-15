@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>可用记录 <span class="cnt">{{ rows|length }}</span></h2>
+<p class="hint">当前版本两票一致的记录，可直接 <a href="/download">下载训练 CSV</a>。</p>
+{% if rows %}
+<p><a class="btn primary" href="/download">⬇ 下载训练 CSV（{{ rows|length }} 条）</a></p>
+<table>
+  <tr><th>记录号</th><th>描述</th><th>一致标签</th></tr>
+  {% for r in rows %}
+  <tr>
+    <td class="no">{{ r.record_no }} <span class="ver">v{{ r.version }}</span></td>
+    <td class="desc">{{ r.description }}</td>
+    <td><span class="tag ok">{{ r.label }}</span></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p class="empty">暂无可下载记录：需要两名标注员对同一版本给出相同标签。</p>
+{% endif %}
+{% endblock %}

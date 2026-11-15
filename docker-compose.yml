@@ -1,0 +1,36 @@
+# 两个应用进程（app1/app2）挂载同一个卷，共享 /data/annotate.db；
+# nginx 轮询转发，浏览器刷新即可看到页脚进程名在 app1/app2 间切换。
+services:
+  app1:
+    build: .
+    environment:
+      INSTANCE_NAME: app1
+      DB_PATH: /data/annotate.db
+      CLAIM_TTL_SECONDS: "60"   # 演示超时可调小，如 "10"
+    volumes:
+      - dbdata:/data
+    restart: unless-stopped
+
+  app2:
+    build: .
+    environment:
+      INSTANCE_NAME: app2
+      DB_PATH: /data/annotate.db
+      CLAIM_TTL_SECONDS: "60"
+    volumes:
+      - dbdata:/data
+    restart: unless-stopped
+
+  gateway:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app1
+      - app2
+    restart: unless-stopped
+
+volumes:
+  dbdata:   # 命名卷：容器重启/重建后标签与领取期限仍在

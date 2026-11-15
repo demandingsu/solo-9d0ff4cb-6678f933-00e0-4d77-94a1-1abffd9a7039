@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card {{ 'ok' if ok else 'err' }}">
+  <h2>{{ '✅' if ok else '⛔' }} {{ title }}</h2>
+  <p>{{ message }}</p>
+  <p><a class="btn primary" href="/pending">返回待标列表</a></p>
+</div>
+{% endblock %}
