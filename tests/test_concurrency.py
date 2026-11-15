@@ -21,7 +21,7 @@ def env(tmp_path, monkeypatch):
     importlib.reload(logic)
     db.init_db()
     with db.write_tx() as conn:
-        logic.upsert_rows(conn, [(f"R{i}", f"描述{i}") for i in range(5)], time.time())
+        logic.upsert_rows(conn, [(f"站{i%2}", f"R{i}", f"描述{i}") for i in range(5)], time.time())
     return db, logic
 
 
@@ -35,7 +35,7 @@ def test_concurrent_claim_and_submit(env):
         for i in range(5):
             try:
                 with db.write_tx() as conn:
-                    info = logic.claim_record(conn, f"R{i}", a, time.time(), 60)
+                    info = logic.claim_record(conn, f"站{i%2}", f"R{i}", a, time.time(), 60)
                 with lock:
                     tokens.append((f"R{i}", a, info["token"]))
             except logic.LogicError:
@@ -81,11 +81,83 @@ def test_concurrent_claim_and_submit(env):
         assert r["c"] <= 2 and r["c"] == r["d"], dict(r)
 
 
+def test_same_record_no_across_stations_concurrent(env):
+    """两个来源站同号记录的并发领取 / 提交 / 改写：互不串票，也不互相清空。
+
+    每条记录在两站各有“站A”“站B”两个副本，两站交替改写副本，另一个站必须始终
+    保留自己已提交的票；每个 (station, record_no, version) 仍然至多两票。
+    """
+    db, logic = env
+    n = 4
+    rows = []
+    for i in range(n):
+        rows.append(("站A", f"S{i}", f"站A描述{i}"))
+        rows.append(("站B", f"S{i}", f"站B描述{i}"))
+    with db.write_tx() as conn:
+        logic.upsert_rows(conn, rows, time.time())
+
+    errors, lock = [], threading.Lock()
+
+    def worker(station, suffix):
+        for i in range(n):
+            for _ in range(3):
+                try:
+                    with db.write_tx() as conn:
+                        info = logic.claim_record(
+                            conn, station, f"S{i}", "ann1", time.time(), 60
+                        )
+                    with db.write_tx() as conn:
+                        logic.submit_label(conn, info["token"], "ann1", "病害", time.time())
+                    break
+                except logic.LogicError:
+                    time.sleep(0.01)
+                except Exception as e:  # pragma: no cover
+                    with lock:
+                        errors.append(e)
+            # 本站改写（别的站改写同号记录不应影响本站）
+            with db.write_tx() as conn:
+                logic.upsert_rows(conn, [(station, f"S{i}", f"{station}描述{i}-{suffix}")], time.time())
+
+    threads = [
+        threading.Thread(target=worker, args=("站A", "a")),
+        threading.Thread(target=worker, args=("站B", "b")),
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert not errors, errors
+
+    conn = db.connect()
+    try:
+        # 每条记录在两站都存在，版本各自独立递增，互不覆盖
+        for i in range(n):
+            for station in ("站A", "站B"):
+                r = conn.execute(
+                    "SELECT station, version, description FROM records_current "
+                    "WHERE station=? AND record_no=?",
+                    (station, f"S{i}"),
+                ).fetchone()
+                assert r is not None, (station, i)
+                assert r["description"].startswith(station)
+        # 标签只可能落在本版本、且每站每版本至多两票
+        for r in conn.execute(
+            "SELECT station, record_no, version, COUNT(*) c, COUNT(DISTINCT annotator) d "
+            "FROM labels GROUP BY station, record_no, version"
+        ):
+            assert r["c"] <= 2 and r["c"] == r["d"], tuple(r)
+        # 标签落点必须与该站当前版本一致，绝不出现跨站同号串票
+        for r in conn.execute("SELECT station, record_no FROM labels"):
+            assert (r["station"], r["record_no"]) in {(s, f"S{i}") for s in ("站A", "站B") for i in range(n)}
+    finally:
+        conn.close()
+
+
 def test_concurrent_rewrite_vs_submit(env):
     """提交与改写并发：要么提交先于改写（随后被清除），要么被挡下；绝不能写进新版本。"""
     db, logic = env
     conn = db.connect()
-    info = logic.claim_record(conn, "R0", "ann1", time.time(), 60)
+    info = logic.claim_record(conn, "站0", "R0", "ann1", time.time(), 60)
     conn.close()
     token = info["token"]
     done = threading.Event()
@@ -93,7 +165,7 @@ def test_concurrent_rewrite_vs_submit(env):
     def rewriter():
         for i in range(30):
             with db.write_tx() as c:
-                logic.upsert_rows(c, [("R0", f"改写版本{i}")], time.time())
+                logic.upsert_rows(c, [("站0", "R0", f"改写版本{i}")], time.time())
         done.set()
 
     def submitter():

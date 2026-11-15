@@ -3,13 +3,23 @@
 <h2>上传语料 CSV</h2>
 <div class="card">
   <p class="hint">
-    CSV 需为 UTF-8 编码，表头 <code>record_no,description</code>（或 <code>记录号,描述</code>）。
-    规则：新记录号 → 新增；同号且描述<b>有改动</b> → 版本 +1，并<b>清除该记录全部旧领取与旧标签</b>，
-    旧页面之后的提交一律拒绝；同号且描述<b>未变</b> → 保留全部标注进度。
-    <a href="/sample.csv">下载示例 CSV</a>
+    CSV 需为 UTF-8 编码，表头 <code>record_no,description</code>（或 <code>记录号,描述</code>），
+    可选 <code>station</code>（或 <code>来源站</code>）列。
+    记录由<b>来源站 + 记录号</b>共同定位：不同站可以使用相同的站内记录号，互不串票。
+    来源站未填写（且 CSV 没有该列或该行留空）时归入 <b>历史站</b>。
   </p>
-  <form method="post" action="/upload" enctype="multipart/form-data">
-    <input type="file" name="file" accept=".csv" required>
+  <p class="hint">
+    规则：新记录 → 新增；<b>同站同号</b>描述有改动 → 版本 +1，并<b>清除该站该记录全部旧领取与旧标签</b>，
+    旧页面之后的提交一律拒绝；<b>同站同号</b>描述未变 → 保留全部标注进度。
+    其他来源站的同号记录不受影响。<a href="/sample.csv">下载示例 CSV</a>
+  </p>
+  <form method="post" action="/upload" enctype="multipart/form-data" class="upload-form">
+    <label class="field">来源站
+      <input type="text" name="station" maxlength="120" placeholder="留空则归入历史站">
+    </label>
+    <label class="field">语料 CSV
+      <input type="file" name="file" accept=".csv" required>
+    </label>
     <button class="btn primary" type="submit">上传</button>
   </form>
 </div>
@@ -18,7 +28,8 @@
 {% endif %}
 {% if stats %}
 <div class="flash ok">
-  导入完成：新增 <b>{{ stats.added }}</b> 条，改写 <b>{{ stats.updated }}</b> 条（旧领取与标签已清除），
+  导入完成（来源站：{{ stats.stations|join('、') or '—' }}）：新增 <b>{{ stats.added }}</b> 条，
+  改写 <b>{{ stats.updated }}</b> 条（本站旧领取与标签已清除），
   未变保留 <b>{{ stats.kept }}</b> 条。
 </div>
 <p><a class="btn" href="/pending">前往待标列表</a></p>

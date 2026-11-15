@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
             raw = f.read()
         with db.write_tx() as conn:
             n = conn.execute("SELECT COUNT(*) AS c FROM records_current").fetchone()["c"]
+            # 同一个 BEGIN IMMEDIATE 事务里复查为空才导入：两个进程同时启动也不会重复写
             if n == 0:
                 logic.upsert_rows(conn, logic.parse_csv_bytes(raw), time.time())
     yield
@@ -141,7 +142,8 @@ def work(request: Request, token: str):
                 status=400,
             )
         cur = conn.execute(
-            "SELECT * FROM records_current WHERE record_no=?", (cl["record_no"],)
+            "SELECT * FROM records_current WHERE station=? AND record_no=?",
+            (cl["station"], cl["record_no"]),
         ).fetchone()
         if cur is None or cur["version"] != cl["version"]:
             return result_page(
@@ -168,11 +170,11 @@ def work(request: Request, token: str):
 # ---------------------------------------------------------------- 动作
 
 @app.post("/claim")
-def claim(request: Request, record_no: str = Form(...)):
+def claim(request: Request, station: str = Form(""), record_no: str = Form(...)):
     a = current_annotator(request)
     try:
         with db.write_tx() as conn:
-            info = logic.claim_record(conn, record_no, a, time.time(), CLAIM_TTL)
+            info = logic.claim_record(conn, station, record_no, a, time.time(), CLAIM_TTL)
     except logic.LogicError as e:
         return back(str(e))
     return RedirectResponse(f"/work/{info['token']}", status_code=303)
@@ -195,10 +197,12 @@ def submit(request: Request, token: str = Form(...), label: str = Form(...)):
 
 
 @app.post("/upload", response_class=HTMLResponse)
-async def upload_do(request: Request, file: UploadFile = File(...)):
+async def upload_do(
+    request: Request, station: str = Form(""), file: UploadFile = File(...)
+):
     raw = await file.read()
     try:
-        rows = logic.parse_csv_bytes(raw)
+        rows = logic.parse_csv_bytes(raw, station)
         with db.write_tx() as conn:
             s = logic.upsert_rows(conn, rows, time.time())
     except logic.LogicError as e:
@@ -219,9 +223,9 @@ def download():
         conn.close()
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(["record_no", "description", "label"])
+    w.writerow(["station", "record_no", "description", "label"])
     for r in rows:
-        w.writerow([r["record_no"], r["description"], r["label"]])
+        w.writerow([r["station"], r["record_no"], r["description"], r["label"]])
     data = "﻿" + buf.getvalue()  # BOM，Excel 直接打开不乱码
     return Response(
         content=data.encode("utf-8"),

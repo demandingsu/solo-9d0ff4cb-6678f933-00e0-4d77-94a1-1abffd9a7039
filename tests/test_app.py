@@ -33,9 +33,11 @@ def upload(client, text=CSV1):
     )
 
 
-def claim_token(client, record_no, annotator):
+def claim_token(client, record_no, annotator, station=""):
     client.cookies.set("annotator", annotator)
-    r = client.post("/claim", data={"record_no": record_no}, follow_redirects=False)
+    r = client.post(
+        "/claim", data={"station": station, "record_no": record_no}, follow_redirects=False
+    )
     assert r.status_code == 303, r.text
     return r.headers["location"].split("/work/")[1]
 
@@ -65,7 +67,8 @@ def test_full_flow_to_download(env):
     r = client.get("/download")
     assert r.status_code == 200
     body = r.content.decode("utf-8-sig")
-    assert "R1,玉米叶片出现病斑,病害" in body
+    assert body.splitlines()[0] == "station,record_no,description,label"
+    assert "历史站,R1,玉米叶片出现病斑,病害" in body
     assert "R2" not in body  # 未完成的记录不进训练集
 
 
@@ -88,11 +91,11 @@ def test_expired_submit_rejected_and_reclaim(env):
     upload(client)
     conn = db.connect()
     try:
-        info = logic.claim_record(conn, "R1", "ann1", now=1000.0, ttl=60)
+        info = logic.claim_record(conn, "", "R1", "ann1", now=1000.0, ttl=60)
         with pytest.raises(logic.LogicError, match="过期"):
             logic.submit_label(conn, info["token"], "ann1", "病害", now=1061.0)
         # 过期后可重领：拿到新 token
-        info2 = logic.claim_record(conn, "R1", "ann1", now=1062.0, ttl=60)
+        info2 = logic.claim_record(conn, "", "R1", "ann1", now=1062.0, ttl=60)
         assert info2["token"] != info["token"]
         # 旧页（旧 token）即使本人重领后也拒绝
         with pytest.raises(logic.LogicError, match="凭证无效"):

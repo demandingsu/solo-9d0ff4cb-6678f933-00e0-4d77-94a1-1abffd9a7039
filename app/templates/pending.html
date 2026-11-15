@@ -7,9 +7,10 @@
 </p>
 {% if rows %}
 <table>
-  <tr><th>记录号</th><th>描述</th><th>已收票</th><th>我的状态 / 操作</th></tr>
+  <tr><th>来源站</th><th>记录号</th><th>描述</th><th>已收票</th><th>我的状态 / 操作</th></tr>
   {% for r in rows %}
   <tr>
+    <td class="station">{{ r.station }}</td>
     <td class="no">{{ r.record_no }} <span class="ver">v{{ r.version }}</span></td>
     <td class="desc">{{ r.description }}</td>
     <td class="c">{{ r.votes }}/2</td>
@@ -23,6 +24,7 @@
         <span class="tag">他人标注中，稍后再试</span>
       {% else %}
         <form method="post" action="/claim" class="inline">
+          <input type="hidden" name="station" value="{{ r.station }}">
           <input type="hidden" name="record_no" value="{{ r.record_no }}">
           <button class="btn primary" type="submit">领取并标注</button>
         </form>

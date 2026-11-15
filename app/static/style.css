@@ -24,6 +24,8 @@ table { width: 100%; border-collapse: collapse; background: #fff; border-radius:
 th, td { padding: 10px 12px; border-bottom: 1px solid #eaecef; text-align: left; vertical-align: top; }
 th { background: #f0f3f6; font-size: 13px; color: #57606a; white-space: nowrap; }
 td.no { white-space: nowrap; font-weight: 600; }
+.station { display: inline-block; padding: 1px 8px; border-radius: 4px; background: #e8f2ec;
+  color: #1f6f43; font-size: 13px; font-weight: 600; white-space: nowrap; }
 td.desc { line-height: 1.6; }
 td.c { text-align: center; }
 .ver { font-size: 12px; color: #57606a; background: #eaecef; border-radius: 4px; padding: 1px 5px; }
@@ -50,3 +52,6 @@ form.inline { display: inline; }
 .empty { color: #57606a; padding: 24px 0; }
 code { background: #eaecef; border-radius: 4px; padding: 1px 6px; }
 footer { color: #57606a; font-size: 13px; padding: 16px; border-top: 1px solid #eaecef; }
+.upload-form { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #57606a; }
+.field input[type="text"] { padding: 7px 10px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 14px; min-width: 220px; }

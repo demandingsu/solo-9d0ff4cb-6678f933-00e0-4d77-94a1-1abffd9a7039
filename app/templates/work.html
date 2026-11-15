@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>标注记录 {{ claim.record_no }} <span class="ver">v{{ claim.version }}</span></h2>
+<h2>标注记录 <span class="station">{{ claim.station }}</span> / {{ claim.record_no }} <span class="ver">v{{ claim.version }}</span></h2>
 <p class="hint">双盲标注：提交前本页面不会显示其他标注员的任何信息。倒计时结束或记录被改写后，本页提交将被拒绝。</p>
 <div class="card">
   <div class="countdown">
